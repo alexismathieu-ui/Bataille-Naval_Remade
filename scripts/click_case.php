@@ -6,6 +6,12 @@ require __DIR__ . '/sql-connect.php';
 $etatFile = __DIR__ . '/../etat_joueurs.json';
 $etat = json_decode(file_get_contents($etatFile), true);
 
+// Si la partie est déjà finie, on bloque tout tir
+if ($etat["winner"] !== null) {
+    exit("Partie terminée.");
+}
+
+
 // Le joueur courant
 $current = $_SESSION["role"]; // joueur1 ou joueur2
 

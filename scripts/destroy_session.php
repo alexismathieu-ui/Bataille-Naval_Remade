@@ -9,7 +9,8 @@ file_put_contents($etatFile, json_encode([
     "j2" => null,
     "j1_ready" => false,
     "j2_ready" => false,
-    "tour" => "joueur1"
+    "tour" => "joueur1",
+    "winner" => null
 ], JSON_PRETTY_PRINT));
 
 // 2) Reset session

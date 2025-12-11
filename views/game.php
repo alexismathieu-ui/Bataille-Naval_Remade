@@ -1,7 +1,6 @@
 <?php
 require __DIR__ . '/../scripts/sql-connect.php';
 
-
 if (!isset($_SESSION["role"])) {
     header("Location: ../index.php");
     exit;
@@ -9,20 +8,55 @@ if (!isset($_SESSION["role"])) {
 
 $sql = new SqlConnect();
 
-$currentRole = $_SESSION["role"]; // joueur1 ou joueur2
-$myTable = $currentRole === 'joueur1' ? 'joueur1' : 'joueur2';
-$enemyTable = $currentRole === 'joueur1' ? 'joueur2' : 'joueur1';
+$currentRole = $_SESSION["role"];
+$myTable     = $currentRole === 'joueur1' ? 'joueur1' : 'joueur2';
+$enemyTable  = $currentRole === 'joueur1' ? 'joueur2' : 'joueur1';
+
 $letters = range('A', 'L');
 $totalRows = 12;
 $totalCols = 10;
 
-// Charger l'état des joueurs (tour)
 $etatFile = __DIR__ . '/../etat_joueurs.json';
 $etat = json_decode(file_get_contents($etatFile), true);
 
-/* ------------------------------
-   Fonction pour charger une grille
---------------------------------*/
+/* GESTION DE LA VICTOIRE  */
+
+// Si un gagnant a déjà été enregistré
+$winnerDeclared = $etat["winner"] ?? null;
+$isWinner       = ($winnerDeclared === $currentRole);
+
+// Si pas encore déclaré → on vérifie maintenant
+if ($winnerDeclared === null) {
+
+    // Voir s'il reste des bateaux non coulés
+    $remaining = $sql->db->query("
+        SELECT COUNT(*) 
+        FROM $enemyTable 
+        WHERE bateau_id > 0 AND checked = 0
+    ")->fetchColumn();
+
+    if ($remaining == 0) {
+        // Partie gagnée !
+        $etat["winner"] = $currentRole;
+        file_put_contents($etatFile, json_encode($etat));
+
+        // Score
+        if (empty($_SESSION["victory_recorded"])) {
+            $stmt = $sql->db->prepare("
+                INSERT INTO scores (joueur, victoires)
+                VALUES (:j, 1)
+                ON DUPLICATE KEY UPDATE victoires = victoires + 1
+            ");
+            $stmt->execute([':j' => $currentRole]);
+            $_SESSION["victory_recorded"] = true;
+        }
+
+        $winnerDeclared = $currentRole;
+        $isWinner = true;
+    }
+}
+
+/* CHARGEMENT DES GRILLES */
 function loadGrid(PDO $db, string $table): array {
     $req = $db->prepare("SELECT * FROM $table ORDER BY row_idx, col_idx");
     $req->execute();
@@ -30,8 +64,8 @@ function loadGrid(PDO $db, string $table): array {
 
     $grid = [];
     foreach ($cells as $cell) {
-        $r = (int)$cell["row_idx"];
-        $c = (int)$cell["col_idx"];
+        $r = $cell["row_idx"];
+        $c = $cell["col_idx"];
         $grid[$r][$c] = $cell;
     }
     return $grid;
@@ -40,20 +74,7 @@ function loadGrid(PDO $db, string $table): array {
 $myGrid = loadGrid($sql->db, $myTable);
 $enemyGrid = loadGrid($sql->db, $enemyTable);
 
-/* ------------------------------
-   Détection victoire
---------------------------------*/
-$remaining = $sql->db->query("
-    SELECT COUNT(*) 
-    FROM $enemyTable 
-    WHERE bateau_id > 0 AND checked = 0
-")->fetchColumn();
-
-$victory = ($remaining == 0);
-
-/* ------------------------------
-   Bateaux coulés
---------------------------------*/
+/* BATEAUX COULÉS */
 $shipNames = [
     2 => 'Torpilleur (2 cases)',
     3 => 'Sous-marin (3 cases)',
@@ -71,133 +92,185 @@ foreach ($shipNames as $id => $name) {
     if ($hits == $total) $coules[] = $name;
 }
 
-/* ------------------------------
-   Mise à jour des scores
---------------------------------*/
-if ($victory && empty($_SESSION['victory_recorded'])) {
-    $stmt = $sql->db->prepare("
-        INSERT INTO scores (joueur, victoires)
-        VALUES (:j, 1)
-        ON DUPLICATE KEY UPDATE victoires = victoires + 1
-    ");
-    $stmt->execute([':j' => $currentRole]);
-    $_SESSION['victory_recorded'] = true;
-}
-
-/* ------------------------------
-   Charger tableau des scores
---------------------------------*/
+/* SCORES */
 $scoreRows = $sql->db->query("SELECT joueur, victoires FROM scores ORDER BY joueur")->fetchAll(PDO::FETCH_ASSOC);
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Battle Ships - Partie</title>
-    <style>
-        body {
-            background:#0b1b30;
-            color:white;
-            font-family: Arial, sans-serif;
-            text-align:center;
-        }
-        h1 { margin-top:20px; }
+<meta charset="UTF-8">
+<title>Battle Ships - Partie</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-        .turn {
-            font-size:20px;
-            margin-bottom:20px;
-            color:#f1c40f;
-        }
+<style>
+    body {
+        background:#0b1b30;
+        color:white;
+        font-family: Arial, sans-serif;
+        text-align:center;
+    }
+    h1 { margin-top:20px; }
 
-        .grid-container {
-            display:flex;
-            justify-content:center;
-            gap:60px;
-            margin-top:30px;
-        }
+    .turn {
+        font-size:20px;
+        margin-bottom:20px;
+        color:#f1c40f;
+    }
 
-        .grid {
-            background:#12233f;
-            border:2px solid white;
-            padding:5px;
-        }
+    .grid-container {
+        display:flex;
+        justify-content:center;
+        gap:60px;
+        margin-top:30px;
+    }
 
-        .row { display:flex; }
+    .grid {
+        background:#12233f;
+        border:2px solid white;
+        padding:5px;
+    }
 
-        .header-cell {
-            width:32px;
-            height:32px;
-            background:#223355;
-            border:1px solid #555;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-weight:bold;
-        }
+    .row { display:flex; }
 
-        .cell {
-            width:32px;
-            height:32px;
-            border:1px solid #555;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-        }
+    .header-cell {
+        width:32px;
+        height:32px;
+        background:#223355;
+        border:1px solid #555;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-weight:bold;
+    }
 
-        .unknown { background:#1e3a5f; }
-        .boat    { background:#6ab04c; }
-        .hit     { background:#c0392b; }
-        .miss    { background:#2980b9; }
+    .cell {
+        width:32px;
+        height:32px;
+        border:1px solid #555;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
 
-        button.shoot {
-            width:100%;
-            height:100%;
-            border:none;
-            background:transparent;
-            cursor:pointer;
-            color:white;
-        }
-        button.shoot:disabled {
-            cursor:not-allowed;
-        }
-    </style>
+    .unknown { background:#1e3a5f; }
+    .boat    { background:#6ab04c; }
+    .hit     { background:#c0392b; }
+    .miss    { background:#2980b9; }
+
+    button.shoot {
+        width:100%;
+        height:100%;
+        border:none;
+        background:transparent;
+        cursor:pointer;
+        color:white;
+        font-size:22px;
+    }
+    button.shoot:disabled {
+        cursor:not-allowed;
+    }
+
+    /* Overlay fin de partie */
+    .victory-overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        color: white;
+        text-align: center;
+        animation: fadeIn 0.6s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .victory-title {
+        font-size: 70px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        text-shadow: 0 0 20px #2ecc71;
+    }
+
+    .defeat { text-shadow: 0 0 20px #e74c3c; }
+
+    .victory-btn {
+        padding: 15px 30px;
+        margin: 10px;
+        font-size: 20px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        background: #3498db;
+        color: white;
+        transition: 0.3s;
+    }
+    .victory-btn:hover {
+        background:#2980b9;
+    }
+</style>
 </head>
+
 <body>
 
 <h1>🚢 Battle Ships</h1>
 
-<?php if ($victory): ?>
-    <div class="victory-overlay">
+<?php
+/* AFFICHAGE DE LA FIN DE PARTIE*/
+if ($winnerDeclared !== null):
+?>
+
+<div class="victory-overlay">
+
+    <?php if ($isWinner): ?>
         <div class="victory-title">🎉 VICTOIRE ! 🎉</div>
-        <div class="victory-sub">
-            <?= strtoupper($currentRole) ?> a remporté la partie !<br>
-            Tous les bateaux adverses ont été coulés.
-        </div>
+        <div class="victory-sub">Tu as remporté la partie !</div>
+        <script>
+        confetti({ particleCount: 200, spread: 100, origin:{y:0.6} });
+        </script>
+    <?php else: ?>
+        <div class="victory-title defeat">💀 DÉFAITE 💀</div>
+        <div class="victory-sub">L’adversaire a gagné…</div>
+    <?php endif; ?>
 
-        <form action="../scripts/reset_total.php" method="POST">
-            <button class="victory-btn">🔄 Rejouer une partie</button>
-        </form>
+    <form action="../scripts/reset_total.php" method="POST">
+        <button class="victory-btn">🔄 Rejouer</button>
+    </form>
 
-        <form action="../index.php" method="GET">
-            <button class="victory-btn">🏠 Retour au menu</button>
-        </form>
-    </div>
+    <form action="../scripts/reset_total.php" method="GET">
+        <button class="victory-btn">🏠 Retour au menu</button>
+    </form>
+
+</div>
+
+<?php
+// ❌ On arrête toute la page ici → impossible de jouer après.
+exit;
+endif;
+?>
+
+<!-- TOUR ACTUEL -->
+<div class="turn">
+<?php if ($etat["tour"] === $currentRole): ?>
+    👉 C'est TON tour !
 <?php else: ?>
-    <div class="turn">
-        <?php if ($etat["tour"] === $currentRole): ?>
-            👉 C'est TON tour !
-        <?php else: ?>
-            ⏳ En attente de l’adversaire…
-        <?php endif; ?>
-    </div>
+    ⏳ En attente de l’adversaire…
 <?php endif; ?>
+</div>
+
+
+<!--   GRILLES DE JEU    -->
 
 <div class="grid-container">
 
-    <!-- ======================= -->
-    <!--    TA GRILLE            -->
-    <!-- ======================= -->
+    <!-- TA GRILLE -->
     <div>
         <h2>Ta grille</h2>
         <div class="grid">
@@ -225,16 +298,14 @@ $scoreRows = $sql->db->query("SELECT joueur, victoires FROM scores ORDER BY joue
                     ?>
                         <div class="<?= $class ?>"></div>
                     <?php endfor; ?>
-
                 </div>
             <?php endfor; ?>
 
         </div>
     </div>
 
-    <!-- ======================= -->
-    <!--    GRILLE ADVERSE       -->
-    <!-- ======================= -->
+
+    <!-- GRILLE ADVERSE -->
     <div>
         <h2>Grille adverse</h2>
         <div class="grid">
@@ -267,7 +338,7 @@ $scoreRows = $sql->db->query("SELECT joueur, victoires FROM scores ORDER BY joue
                             $disabled = true;
                         }
 
-                        if ($etat["tour"] !== $currentRole || $victory) {
+                        if ($etat["tour"] !== $currentRole) {
                             $disabled = true;
                         }
                     ?>
@@ -289,6 +360,7 @@ $scoreRows = $sql->db->query("SELECT joueur, victoires FROM scores ORDER BY joue
 
 </div>
 
+
 <h2>Bateaux coulés</h2>
 <?php if (empty($coules)): ?>
     <p>Aucun pour le moment</p>
@@ -300,14 +372,12 @@ $scoreRows = $sql->db->query("SELECT joueur, victoires FROM scores ORDER BY joue
     </ul>
 <?php endif; ?>
 
+
 <h2>Scores</h2>
 <table border="1" style="margin:auto; padding:8px; border-collapse:collapse;">
     <tr><th>Joueur</th><th>Victoires</th></tr>
     <?php foreach ($scoreRows as $s): ?>
-        <tr>
-            <td><?= $s["joueur"] ?></td>
-            <td><?= $s["victoires"] ?></td>
-        </tr>
+        <tr><td><?= $s["joueur"] ?></td><td><?= $s["victoires"] ?></td></tr>
     <?php endforeach; ?>
 </table>
 

@@ -53,6 +53,35 @@ body { background:#0b1b30; color:white; font-family:Arial; text-align:center; }
 .row { display:flex; }
 .cell { width:32px; height:32px; border:1px solid #456; background:#123; cursor:pointer; }
 .boat { background:#27ae60 !important; }
+.preview-ok {
+    background: rgba(46, 204, 113, 0.6) !important;
+}
+
+.preview-bad {
+    background: rgba(231, 76, 60, 0.6) !important;
+}
+
+.orientation-btn {
+    padding: 10px 20px;
+    margin: 5px;
+    background: #34495e;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.orientation-btn:hover {
+    background: #3d5a73;
+}
+
+.orientation-selected {
+    background: #3498db !important;
+    box-shadow: 0 0 10px #2980b9;
+}
+
+
 </style>
 
 <script>
@@ -87,6 +116,56 @@ function placeBoat(r, c) {
     .then(r => r.text())
     .then(txt => { alert(txt); location.reload(); });
 }
+
+// STOCKAGE DOM DES CELLULES
+let gridCells = [];
+
+window.onload = () => {
+    document.querySelectorAll(".cell").forEach((cell, index) => {
+        gridCells.push(cell);
+    });
+};
+
+
+// Effacer la preview
+function clearPreview() {
+    gridCells.forEach(c => c.classList.remove("preview-ok", "preview-bad"));
+}
+
+
+// Afficher la preview
+function previewBoat(r, c) {
+    clearPreview();
+
+    if (!selectedBoat) return;
+
+    let ok = true;
+    let targets = [];
+
+    for (let i = 0; i < selectedSize; i++) {
+        let rr = orientation === "vertical" ? r + i : r;
+        let cc = orientation === "horizontal" ? c + i : c;
+
+        if (rr >= 12 || cc >= 10) { ok = false; continue; }
+
+        let index = rr * 10 + cc;
+        let cell = gridCells[index];
+
+        if (cell.classList.contains("boat")) ok = false;
+
+        targets.push(cell);
+    }
+
+    targets.forEach(cell =>
+        cell.classList.add(ok ? "preview-ok" : "preview-bad")
+    );
+}
+function setOrientation(o) {
+    orientation = o;
+    document.getElementById("btn-h").classList.toggle("orientation-selected", o === "horizontal");
+    document.getElementById("btn-v").classList.toggle("orientation-selected", o === "vertical");
+}
+
 </script>
 </head>
 
@@ -119,8 +198,16 @@ while ($row = $q->fetchColumn()) {
 </div>
 
 <h2>Orientation</h2>
-<button onclick="setOrientation('horizontal')">Horizontal</button>
-<button onclick="setOrientation('vertical')">Vertical</button>
+<button id="btn-h" class="orientation-btn orientation-selected"
+        onclick="setOrientation('horizontal')">
+    ➖ Horizontal
+</button>
+
+<button id="btn-v" class="orientation-btn"
+        onclick="setOrientation('vertical')">
+    ↕ Vertical
+</button>
+
 
 <h2>Cliquez sur la grille pour placer</h2>
 
@@ -145,7 +232,11 @@ while ($row = $q->fetchColumn()) {
                 $cell = $sql->db->query("SELECT bateau_id FROM $table WHERE row_idx=$r AND col_idx=$c")->fetchColumn();
                 $class = $cell > 0 ? "boat" : "";
             ?>
-                <div class="cell <?= $class ?>" onclick="placeBoat(<?= $r ?>, <?= $c ?>)"></div>
+                <div class="cell <?= $class ?>"
+                    onmouseover="previewBoat(<?= $r ?>, <?= $c ?>)"
+                    onmouseout="clearPreview()"
+                    onclick="placeBoat(<?= $r ?>, <?= $c ?>)">
+                </div>
             <?php endfor; ?>
         </div>
     <?php endfor; ?>
