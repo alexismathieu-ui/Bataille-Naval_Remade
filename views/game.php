@@ -1,40 +1,59 @@
 <?php
 require __DIR__ . '/../scripts/sql-connect.php';
 
-$sql = new SqlConnect();
 
 if (!isset($_SESSION["role"])) {
     header("Location: ../index.php");
     exit;
 }
 
-$currentRole = $_SESSION["role"];           // 'joueur1' ou 'joueur2'
-$adversaireTable = $currentRole === 'joueur1' ? 'joueur2' : 'joueur1';
+$sql = new SqlConnect();
 
-// On récupère l'état des joueurs pour l'affichage
-$fichierEtat = __DIR__ . '/../etat_joueurs.json';
-$etat = json_decode(file_get_contents($fichierEtat), true);
+$currentRole = $_SESSION["role"]; // joueur1 ou joueur2
+$myTable = $currentRole === 'joueur1' ? 'joueur1' : 'joueur2';
+$enemyTable = $currentRole === 'joueur1' ? 'joueur2' : 'joueur1';
+$letters = range('A', 'L');
+$totalRows = 12;
+$totalCols = 10;
 
-// Récupération de la grille de l'adversaire
-$query = "SELECT * FROM $adversaireTable ORDER BY row_idx, col_idx";
-$req = $sql->db->prepare($query);
-$req->execute();
-$rows = $req->fetchAll(PDO::FETCH_ASSOC);
+// Charger l'état des joueurs (tour)
+$etatFile = __DIR__ . '/../etat_joueurs.json';
+$etat = json_decode(file_get_contents($etatFile), true);
 
-// On transforme en matrice [row][col]
-$grid = [];
-foreach ($rows as $cell) {
-    $r = (int)$cell["row_idx"];
-    $c = (int)$cell["col_idx"];
-    $grid[$r][$c] = $cell;
+/* ------------------------------
+   Fonction pour charger une grille
+--------------------------------*/
+function loadGrid(PDO $db, string $table): array {
+    $req = $db->prepare("SELECT * FROM $table ORDER BY row_idx, col_idx");
+    $req->execute();
+    $cells = $req->fetchAll(PDO::FETCH_ASSOC);
+
+    $grid = [];
+    foreach ($cells as $cell) {
+        $r = (int)$cell["row_idx"];
+        $c = (int)$cell["col_idx"];
+        $grid[$r][$c] = $cell;
+    }
+    return $grid;
 }
 
-// Paramètres de la grille
-$totalRows = 12;                // A à L
-$totalCols = 10;                // 0 à 9
-$letters   = range('A', 'L');
+$myGrid = loadGrid($sql->db, $myTable);
+$enemyGrid = loadGrid($sql->db, $enemyTable);
 
-// Noms des bateaux
+/* ------------------------------
+   Détection victoire
+--------------------------------*/
+$remaining = $sql->db->query("
+    SELECT COUNT(*) 
+    FROM $enemyTable 
+    WHERE bateau_id > 0 AND checked = 0
+")->fetchColumn();
+
+$victory = ($remaining == 0);
+
+/* ------------------------------
+   Bateaux coulés
+--------------------------------*/
 $shipNames = [
     2 => 'Torpilleur (2 cases)',
     3 => 'Sous-marin (3 cases)',
@@ -42,265 +61,245 @@ $shipNames = [
     5 => 'Porte-avions (5 cases)',
 ];
 
-// Détection des bateaux coulés chez l'adversaire
 $coules = [];
-
 foreach ($shipNames as $id => $name) {
-    // Nombre total de cases pour ce type de bateau
-    $totalStmt = $sql->db->prepare("SELECT COUNT(*) FROM $adversaireTable WHERE bateau_id = :id");
-    $totalStmt->execute([':id' => $id]);
-    $total = (int)$totalStmt->fetchColumn();
+    $total = $sql->db->query("SELECT COUNT(*) FROM $enemyTable WHERE bateau_id = $id")->fetchColumn();
+    if ($total == 0) continue;
 
-    if ($total === 0) {
-        continue;
-    }
+    $hits = $sql->db->query("SELECT COUNT(*) FROM $enemyTable WHERE bateau_id = $id AND checked = 1")->fetchColumn();
 
-    // Nombre de cases touchées
-    $hitStmt = $sql->db->prepare("SELECT COUNT(*) FROM $adversaireTable WHERE bateau_id = :id AND checked = 1");
-    $hitStmt->execute([':id' => $id]);
-    $hits = (int)$hitStmt->fetchColumn();
-
-    if ($hits === $total) {
-        $coules[] = $name;
-    }
+    if ($hits == $total) $coules[] = $name;
 }
 
-// Vérification de la victoire : plus aucune case bateau non touchée
-$remainStmt = $sql->db->query("SELECT COUNT(*) FROM $adversaireTable WHERE bateau_id > 0 AND checked = 0");
-$remaining = (int)$remainStmt->fetchColumn();
-$victory = ($remaining === 0);
-
-// Mise à jour du tableau des scores (une seule fois grâce à la session)
+/* ------------------------------
+   Mise à jour des scores
+--------------------------------*/
 if ($victory && empty($_SESSION['victory_recorded'])) {
-    $winner = $currentRole; // 'joueur1' ou 'joueur2'
-
-    $scoreStmt = $sql->db->prepare("
+    $stmt = $sql->db->prepare("
         INSERT INTO scores (joueur, victoires)
-        VALUES (:joueur, 1)
+        VALUES (:j, 1)
         ON DUPLICATE KEY UPDATE victoires = victoires + 1
     ");
-    $scoreStmt->execute([':joueur' => $winner]);
-
+    $stmt->execute([':j' => $currentRole]);
     $_SESSION['victory_recorded'] = true;
 }
 
-// Récupération du tableau des scores
+/* ------------------------------
+   Charger tableau des scores
+--------------------------------*/
 $scoreRows = $sql->db->query("SELECT joueur, victoires FROM scores ORDER BY joueur")->fetchAll(PDO::FETCH_ASSOC);
 
-$labelCourant   = $currentRole === 'joueur1' ? 'Joueur 1' : 'Joueur 2';
-$labelAdversaire = $adversaireTable === 'joueur1' ? 'Joueur 1' : 'Joueur 2';
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Battle Ships Crews - Partie</title>
+    <title>Battle Ships - Partie</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
             background:#0b1b30;
-            color:#ffffff;
+            color:white;
+            font-family: Arial, sans-serif;
             text-align:center;
         }
         h1 { margin-top:20px; }
 
-        .info-bar {
-            margin-top:10px;
+        .turn {
+            font-size:20px;
+            margin-bottom:20px;
+            color:#f1c40f;
+        }
+
+        .grid-container {
+            display:flex;
+            justify-content:center;
+            gap:60px;
+            margin-top:30px;
         }
 
         .grid {
-            display:inline-block;
-            margin-top:20px;
-            border:2px solid #ffffff;
             background:#12233f;
+            border:2px solid white;
+            padding:5px;
         }
 
         .row { display:flex; }
 
-        .header-cell, .cell {
+        .header-cell {
             width:32px;
             height:32px;
+            background:#223355;
+            border:1px solid #555;
             display:flex;
             align-items:center;
             justify-content:center;
-            border:1px solid #555;
-            font-size:14px;
-        }
-
-        .header-cell {
-            background:#223355;
             font-weight:bold;
         }
 
-        .cell button {
+        .cell {
+            width:32px;
+            height:32px;
+            border:1px solid #555;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        }
+
+        .unknown { background:#1e3a5f; }
+        .boat    { background:#6ab04c; }
+        .hit     { background:#c0392b; }
+        .miss    { background:#2980b9; }
+
+        button.shoot {
             width:100%;
             height:100%;
             border:none;
             background:transparent;
             cursor:pointer;
+            color:white;
         }
-
-        .cell.unknown { background:#1e3a5f; }
-        .cell.hit     { background:#c0392b; }
-        .cell.miss    { background:#2980b9; }
-
-        .cell button:disabled { cursor:default; }
-
-        .victory {
-            margin-top:20px;
-            font-size:24px;
-            color:#2ecc71;
-        }
-
-        .bateaux-liste {
-            margin-top:15px;
-        }
-
-        .scores {
-            margin-top:30px;
-        }
-
-        .scores table {
-            margin:0 auto;
-            border-collapse:collapse;
-        }
-
-        .scores th, .scores td {
-            border:1px solid #ffffff;
-            padding:6px 12px;
-        }
-
-        .status-players {
-            margin-top:10px;
-        }
-
-        .reset-form {
-            margin-top:20px;
-        }
-
-        button.reset-btn {
-            padding:8px 16px;
-            border:none;
-            border-radius:6px;
-            cursor:pointer;
-            background:#e74c3c;
-            color:#fff;
-            font-size:14px;
+        button.shoot:disabled {
+            cursor:not-allowed;
         }
     </style>
 </head>
 <body>
-    <h1>🚢 Battle Ships Crews</h1>
 
-    <div class="info-bar">
-        <p>Tu es : <strong><?= htmlspecialchars($labelCourant) ?></strong></p>
-        <p>Tu tires sur : <strong><?= htmlspecialchars($labelAdversaire) ?></strong></p>
+<h1>🚢 Battle Ships</h1>
+
+<?php if ($victory): ?>
+    <h2 style="color:#2ecc71;">🎉 Victoire ! Tu as coulé tous les bateaux adverses !</h2>
+<?php else: ?>
+    <div class="turn">
+        <?php if ($etat["tour"] === $currentRole): ?>
+            👉 C'est **TON tour** !
+        <?php else: ?>
+            ⏳ En attente de l’adversaire…
+        <?php endif; ?>
     </div>
+<?php endif; ?>
 
-    <div class="status-players">
-        <p>Joueur 1 : <?= $etat["j1"] ? "🟢 Occupé" : "🔴 Libre" ?> |
-           Joueur 2 : <?= $etat["j2"] ? "🟢 Occupé" : "🔴 Libre" ?></p>
-    </div>
+<div class="grid-container">
 
-    <?php if ($victory): ?>
-        <div class="victory">
-            🎉 Vous avez gagné ! Tous les bateaux de l'adversaire sont coulés.
-        </div>
-    <?php else: ?>
-        <p>Clique sur une case pour tirer.</p>
-    <?php endif; ?>
+    <!-- ======================= -->
+    <!--    TA GRILLE            -->
+    <!-- ======================= -->
+    <div>
+        <h2>Ta grille</h2>
+        <div class="grid">
 
-    <div class="grid">
-        <!-- Ligne d’en-tête des colonnes -->
-        <div class="row">
-            <div class="header-cell"></div>
-            <?php for ($c = 0; $c < $totalCols; $c++): ?>
-                <div class="header-cell"><?= $c ?></div>
-            <?php endfor; ?>
-        </div>
-
-        <!-- Lignes de la grille -->
-        <?php for ($r = 0; $r < $totalRows; $r++): ?>
             <div class="row">
-                <div class="header-cell"><?= $letters[$r] ?></div>
-                <?php for ($c = 0; $c < $totalCols; $c++):
-                    $cell = $grid[$r][$c] ?? [
-                        "idgrid"    => null,
-                        "bateau_id" => 0,
-                        "checked"   => 0,
-                    ];
+                <div class="header-cell"></div>
+                <?php for ($c=0;$c<$totalCols;$c++): ?>
+                    <div class="header-cell"><?= $c ?></div>
+                <?php endfor; ?>
+            </div>
 
-                    $classes = 'cell ';
-                    $symbol  = '';
-                    $disabled = false;
+            <?php for ($r=0;$r<$totalRows;$r++): ?>
+                <div class="row">
+                    <div class="header-cell"><?= $letters[$r] ?></div>
 
-                    if ($cell["checked"]) {
-                        if ($cell["bateau_id"] > 0) {
-                            $classes .= 'hit';
-                            $symbol = '💥';
+                    <?php for ($c=0;$c<$totalCols;$c++):
+                        $cell = $myGrid[$r][$c];
+                        $class = "cell";
+
+                        if ($cell["checked"] == 1) {
+                            $class .= $cell["bateau_id"] > 0 ? " hit" : " miss";
                         } else {
-                            $classes .= 'miss';
-                            $symbol = '🌊';
+                            $class .= $cell["bateau_id"] > 0 ? " boat" : " unknown";
                         }
-                        $disabled = true;
-                    } else {
-                        $classes .= 'unknown';
-                    }
+                    ?>
+                        <div class="<?= $class ?>"></div>
+                    <?php endfor; ?>
 
-                    if ($victory) {
-                        $disabled = true;
-                    }
-                ?>
-                    <div class="<?= $classes ?>">
-                        <?php if ($cell["idgrid"] !== null): ?>
-                            <form method="post" action="../scripts/click_case.php">
-                                <input type="hidden" name="cell" value="<?= htmlspecialchars($cell["idgrid"]) ?>">
-                                <button type="submit" <?= $disabled ? 'disabled' : '' ?>>
+                </div>
+            <?php endfor; ?>
+
+        </div>
+    </div>
+
+    <!-- ======================= -->
+    <!--    GRILLE ADVERSE       -->
+    <!-- ======================= -->
+    <div>
+        <h2>Grille adverse</h2>
+        <div class="grid">
+
+            <div class="row">
+                <div class="header-cell"></div>
+                <?php for ($c=0;$c<$totalCols;$c++): ?>
+                    <div class="header-cell"><?= $c ?></div>
+                <?php endfor; ?>
+            </div>
+
+            <?php for ($r=0;$r<$totalRows;$r++): ?>
+                <div class="row">
+                    <div class="header-cell"><?= $letters[$r] ?></div>
+
+                    <?php for ($c=0;$c<$totalCols;$c++):
+                        $cell = $enemyGrid[$r][$c];
+                        $class = "cell unknown";
+                        $symbol = "";
+                        $disabled = false;
+
+                        if ($cell["checked"] == 1) {
+                            if ($cell["bateau_id"] > 0) {
+                                $class = "cell hit";
+                                $symbol = "💥";
+                            } else {
+                                $class = "cell miss";
+                                $symbol = "🌊";
+                            }
+                            $disabled = true;
+                        }
+
+                        if ($etat["tour"] !== $currentRole || $victory) {
+                            $disabled = true;
+                        }
+                    ?>
+                        <div class="<?= $class ?>">
+                            <form method="POST" action="../scripts/click_case.php">
+                                <input type="hidden" name="cell" value="<?= $cell['idgrid'] ?>">
+                                <button class="shoot" type="submit" <?= $disabled ? "disabled" : "" ?>>
                                     <?= $symbol ?>
                                 </button>
                             </form>
-                        <?php endif; ?>
-                    </div>
-                <?php endfor; ?>
-            </div>
-        <?php endfor; ?>
+                        </div>
+                    <?php endfor; ?>
+
+                </div>
+            <?php endfor; ?>
+
+        </div>
     </div>
 
-    <div class="bateaux-liste">
-        <h2>Bateaux coulés chez l'adversaire</h2>
-        <?php if (empty($coules)): ?>
-            <p>Aucun bateau entièrement coulé pour l'instant.</p>
-        <?php else: ?>
-            <ul>
-                <?php foreach ($coules as $b): ?>
-                    <li><?= htmlspecialchars($b) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
-    </div>
+</div>
 
-    <div class="scores">
-        <h2>Tableau des scores</h2>
-        <table>
-            <tr>
-                <th>Joueur</th>
-                <th>Victoires</th>
-            </tr>
-            <?php foreach ($scoreRows as $s): ?>
-                <tr>
-                    <td><?= htmlspecialchars($s["joueur"]) ?></td>
-                    <td><?= (int)$s["victoires"] ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </table>
-    </div>
+<h2>Bateaux coulés</h2>
+<?php if (empty($coules)): ?>
+    <p>Aucun pour le moment</p>
+<?php else: ?>
+    <ul>
+        <?php foreach ($coules as $b): ?>
+            <li><?= $b ?></li>
+        <?php endforeach; ?>
+    </ul>
+<?php endif; ?>
 
-    <div class="reset-form">
-        <form method="post" action="../scripts/reset_total.php">
-            <button class="reset-btn" type="submit" name="reset_total">
-                ❌ Fin de partie (RESET)
-            </button>
-        </form>
-    </div>
+<h2>Scores</h2>
+<table border="1" style="margin:auto; padding:8px; border-collapse:collapse;">
+    <tr><th>Joueur</th><th>Victoires</th></tr>
+    <?php foreach ($scoreRows as $s): ?>
+        <tr>
+            <td><?= $s["joueur"] ?></td>
+            <td><?= $s["victoires"] ?></td>
+        </tr>
+    <?php endforeach; ?>
+</table>
+
+<form method="POST" action="../scripts/reset_total.php">
+    <button style="margin-top:20px; padding:10px;">🔄 RESET</button>
+</form>
+
 </body>
 </html>

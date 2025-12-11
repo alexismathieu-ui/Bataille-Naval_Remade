@@ -2,20 +2,35 @@
 session_start();
 require __DIR__ . '/sql-connect.php';
 
-if (isset($_POST["cell"]) && isset($_SESSION["role"])) {
+// Charger état joueurs
+$etatFile = __DIR__ . '/../etat_joueurs.json';
+$etat = json_decode(file_get_contents($etatFile), true);
+
+// Le joueur courant
+$current = $_SESSION["role"]; // joueur1 ou joueur2
+
+// Vérifier que c'est son tour
+if ($etat["tour"] !== $current) {
+    header("Location: ../index.php");
+    exit;
+}
+
+if (isset($_POST["cell"])) {
     $sql = new SqlConnect();
 
-    // On tire sur la grille de l'adversaire
-    $playerTable = $_SESSION["role"] === 'joueur1' ? 'joueur2' : 'joueur1';
+    // Grille adverse
+    $enemy = $current === "joueur1" ? "joueur2" : "joueur1";
 
-    $query = "
-        UPDATE $playerTable
-        SET checked = CASE WHEN checked = 0 THEN 1 ELSE 0 END
-        WHERE idgrid = :cell
-    ";
+    $stmt = $sql->db->prepare("
+        UPDATE $enemy
+        SET checked = 1
+        WHERE idgrid = :id
+    ");
+    $stmt->execute([":id" => $_POST["cell"]]);
 
-    $req = $sql->db->prepare($query);
-    $req->execute([':cell' => (int)$_POST["cell"]]);
+    // changer de tour
+    $etat["tour"] = ($current === "joueur1") ? "joueur2" : "joueur1";
+    file_put_contents($etatFile, json_encode($etat));
 }
 
 header("Location: ../index.php");

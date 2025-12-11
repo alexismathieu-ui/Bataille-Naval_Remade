@@ -1,11 +1,22 @@
 <?php
 session_start();
-require __DIR__ . '/save_state.php';
 
-$fichier = __DIR__ . '/../etat_joueurs.json';
-$etat = ["j1" => null, "j2" => null];
+// 1) Reset JSON
+$etatFile = __DIR__ . '/../etat_joueurs.json';
 
-save_state($fichier, $etat);
+file_put_contents($etatFile, json_encode([
+    "j1" => null,
+    "j2" => null,
+    "tour" => "joueur1"
+], JSON_PRETTY_PRINT));
 
+// 2) Reset session
+$_SESSION = [];
 session_unset();
 session_destroy();
+
+// 3) Reset SQL : réinitialiser les grilles de jeu
+require __DIR__ . '/../init_grids.php';
+// 4) Redirection vers la page d'accueil
+header("Location: ../index.php");
+exit;

@@ -1,4 +1,9 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
 require __DIR__ . '/scripts/sql-connect.php';
 
 $sql = new SqlConnect();
@@ -25,8 +30,8 @@ $sql->db->exec("TRUNCATE TABLE joueur2");
 
 // Prépare l'INSERT pour joueur1
 $insert = $sql->db->prepare(
-    "INSERT INTO joueur1 (row_idx, col_idx, bateau_id) 
-     VALUES (:row_idx, :col_idx, :bateau_id)"
+    "INSERT INTO joueur1 (row_idx, col_idx, bateau_id, checked) 
+     VALUES (:row_idx, :col_idx, :bateau_id, 0)"
 );
 
 foreach ($grid as $rowIndex => $row) {
@@ -41,8 +46,8 @@ foreach ($grid as $rowIndex => $row) {
 
 // Copie la même grille pour joueur2
 $sql->db->exec("
-    INSERT INTO joueur2 (row_idx, col_idx, bateau_id)
-    SELECT row_idx, col_idx, bateau_id FROM joueur1
+    INSERT INTO joueur2 (row_idx, col_idx, bateau_id, checked)
+    SELECT row_idx, col_idx, bateau_id, 0 FROM joueur1
 ");
 
 echo "Grilles initialisées pour Joueur 1 et Joueur 2.";

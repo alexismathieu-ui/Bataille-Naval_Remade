@@ -6,8 +6,8 @@ class SqlConnect {
     private string $host = '127.0.0.1';
     private string $port = '3306';
     private string $dbname = 'battle';
-    private string $user = 'root';
-    private string $password = 'Alexis45170';
+    private string $user = 'bataille';
+    private string $password = '1234';
 
     public function __construct()
     {
