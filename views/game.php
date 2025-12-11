@@ -168,11 +168,25 @@ $scoreRows = $sql->db->query("SELECT joueur, victoires FROM scores ORDER BY joue
 <h1>🚢 Battle Ships</h1>
 
 <?php if ($victory): ?>
-    <h2 style="color:#2ecc71;">🎉 Victoire ! Tu as coulé tous les bateaux adverses !</h2>
+    <div class="victory-overlay">
+        <div class="victory-title">🎉 VICTOIRE ! 🎉</div>
+        <div class="victory-sub">
+            <?= strtoupper($currentRole) ?> a remporté la partie !<br>
+            Tous les bateaux adverses ont été coulés.
+        </div>
+
+        <form action="../scripts/reset_total.php" method="POST">
+            <button class="victory-btn">🔄 Rejouer une partie</button>
+        </form>
+
+        <form action="../index.php" method="GET">
+            <button class="victory-btn">🏠 Retour au menu</button>
+        </form>
+    </div>
 <?php else: ?>
     <div class="turn">
         <?php if ($etat["tour"] === $currentRole): ?>
-            👉 C'est **TON tour** !
+            👉 C'est TON tour !
         <?php else: ?>
             ⏳ En attente de l’adversaire…
         <?php endif; ?>

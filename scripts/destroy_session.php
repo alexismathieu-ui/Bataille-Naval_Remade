@@ -7,6 +7,8 @@ $etatFile = __DIR__ . '/../etat_joueurs.json';
 file_put_contents($etatFile, json_encode([
     "j1" => null,
     "j2" => null,
+    "j1_ready" => false,
+    "j2_ready" => false,
     "tour" => "joueur1"
 ], JSON_PRETTY_PRINT));
 
