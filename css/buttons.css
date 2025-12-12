@@ -1,0 +1,69 @@
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button.shoot {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    color: white;
+}
+
+.btn-j1 { background: #3498db; color: white; }
+.btn-j2 { background: #e67e22; color: white; }
+
+.orientation-btn {
+    background: #34495e;
+    color: white;
+    transition: 0.2s;
+}
+
+.orientation-btn:hover {
+    background: #3d5a73;
+}
+
+.orientation-selected {
+    background: #3498db !important;
+    box-shadow: 0 0 10px #2980b9;
+}
+
+.btn-ready {
+    margin-top: 20px;
+    padding: 12px 20px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.sound-btn {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+    background: #34495e;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+    z-index: 9999;
+}
+
+.sound-btn:hover {
+    background: #3d5a73;
+}
+

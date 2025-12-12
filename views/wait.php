@@ -20,15 +20,11 @@ if ($etat["j1_ready"] && $etat["j2_ready"]) {
 <head>
 <meta charset="UTF-8">
 <title>En attente…</title>
-<style>
-body {
-    background:#0b1b30;
-    color:white;
-    font-family:Arial;
-    text-align:center;
-    padding-top:100px;
-}
-</style>
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/grid.css">
+<link rel="stylesheet" href="/css/buttons.css">
+<link rel="stylesheet" href="/css/victory.css">
+<link rel="stylesheet" href="/css/placement.css">
 </head>
 <body>
 

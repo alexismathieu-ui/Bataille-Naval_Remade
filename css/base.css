@@ -1,0 +1,17 @@
+body {
+    background: #0b1b30;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+}
+
+h1 { margin-top: 40px; }
+h2 { margin-top: 20px; }
+
+.turn {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #f1c40f;
+}
+

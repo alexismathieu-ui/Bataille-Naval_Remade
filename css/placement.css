@@ -1,0 +1,49 @@
+.preview-ok {
+    background: rgba(46, 204, 113, 0.6) !important;
+}
+
+.preview-bad {
+    background: rgba(231, 76, 60, 0.6) !important;
+}
+
+.boats-list {
+    margin-bottom: 20px;
+}
+
+/* Animation preview */
+.cell {
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.preview-ok {
+    background: rgba(46, 204, 113, 0.65) !important;
+    transform: scale(1.05);
+}
+
+.preview-bad {
+    background: rgba(231, 76, 60, 0.65) !important;
+    transform: scale(1.05);
+}
+
+/* Toast message */
+#toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c3e50;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    z-index: 9999;
+}
+
+#toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px);
+}
+

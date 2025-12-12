@@ -1,0 +1,44 @@
+:root {
+    --cell-size: 40px;
+}
+
+
+.grid-container {
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    margin-top: 30px;
+}
+
+.grid {
+    background: #12233f;
+    border: 2px solid white;
+    padding: 5px;
+}
+
+.row {
+    display: flex;
+}
+
+.header-cell {
+    width: 40px;
+    height: 40px;
+    background: #223355;
+    border: 1px solid #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.cell {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #555;
+}
+
+.unknown { background: #1e3a5f; }
+.boat    { background: #6ab04c; }
+.hit     { background: #c0392b; }
+.miss    { background: #2980b9; }
+

@@ -32,7 +32,7 @@ if (isset($_POST["cell"])) {
         SET checked = 1
         WHERE idgrid = :id
     ");
-    $stmt->execute([":id" => $_POST["cell"]]);
+    $stmt->execute([":id" => $_POST["cell"]]); //stmt = statement
 
     // changer de tour
     $etat["tour"] = ($current === "joueur1") ? "joueur2" : "joueur1";

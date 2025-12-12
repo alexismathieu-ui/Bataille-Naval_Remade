@@ -47,66 +47,66 @@ if (isset($_POST["ready"])) {
 <head>
 <meta charset="UTF-8">
 <title>Placement des bateaux</title>
-<style>
-body { background:#0b1b30; color:white; font-family:Arial; text-align:center; }
-.grid { display:inline-block; margin-top:20px; }
-.row { display:flex; }
-.cell { width:32px; height:32px; border:1px solid #456; background:#123; cursor:pointer; }
-.boat { background:#27ae60 !important; }
-.preview-ok {
-    background: rgba(46, 204, 113, 0.6) !important;
-}
-
-.preview-bad {
-    background: rgba(231, 76, 60, 0.6) !important;
-}
-
-.orientation-btn {
-    padding: 10px 20px;
-    margin: 5px;
-    background: #34495e;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.orientation-btn:hover {
-    background: #3d5a73;
-}
-
-.orientation-selected {
-    background: #3498db !important;
-    box-shadow: 0 0 10px #2980b9;
-}
-
-
-</style>
-
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/grid.css">
+<link rel="stylesheet" href="/css/buttons.css">
+<link rel="stylesheet" href="/css/victory.css">
+<link rel="stylesheet" href="/css/placement.css">
 <script>
 // Gestion du placement des bateaux
 let selectedBoat = null;
 let selectedSize = 0;
 let orientation = "horizontal";
 
+/* -------- Affichage toast -------- */
+function showToast(message) {
+    let toast = document.getElementById("toast");
+    if (!toast) return; // <-- empêche tout crash
+
+    toast.textContent = message;
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 1500);
+}
+
+/* ------- SONS ------- */
+const soundSelect = new Audio("/assets/sounds/select.mp3");
+const soundPlace  = new Audio("/assets/sounds/place.mp3");
+const soundError  = new Audio("/assets/sounds/error.mp3");
+
+// Volume doux (important)
+soundSelect.volume = 0.4;
+soundPlace.volume  = 0.5;
+soundError.volume  = 0.4;
+
+/* -------- Sélection bateau -------- */
 function selectBoat(id, size) {
     selectedBoat = id;
     selectedSize = size;
-    alert("Bateau choisi : " + id);
+    soundSelect.play();
+    showToast("Bateau sélectionné");
 }
 
-
+/* -------- Orientation -------- */
 function setOrientation(o) {
     orientation = o;
+    document.getElementById("btn-h").classList.toggle("orientation-selected", o === "horizontal");
+    document.getElementById("btn-v").classList.toggle("orientation-selected", o === "vertical");
 }
 
+/* -------- Placement bateau -------- */
 function placeBoat(r, c) {
-    if (!selectedBoat) { alert("Choisis un bateau d’abord !"); return; }
+    if (!selectedBoat) {
+        soundError.play();
+        showToast("Choisis un bateau d’abord");
+        return;
+    }
 
     fetch("../scripts/save_boat.php", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             boat: selectedBoat,
             size: selectedSize,
@@ -115,30 +115,35 @@ function placeBoat(r, c) {
             orientation: orientation
         })
     })
-    .then(r => r.text())
-    .then(txt => { alert(txt); location.reload(); });
+    .then(res => res.text())
+    .then(txt => {
+        if (txt.toLowerCase().includes("erreur")) {
+            soundError.play();
+        } else {
+            soundPlace.play();
+        }
+        showToast(txt);
+        setTimeout(() => location.reload(), 400);
+    });
 }
 
-// Gestion de la grille
+/* -------- Gestion de la grille -------- */
 let gridCells = [];
 
 window.onload = () => {
-    document.querySelectorAll(".cell").forEach((cell, index) => {
-        gridCells.push(cell);
-    });
+    gridCells = Array.from(document.querySelectorAll(".cell"));
 };
 
-
-// Effacer la preview
+/* -------- Effacer la preview -------- */
 function clearPreview() {
-    gridCells.forEach(c => c.classList.remove("preview-ok", "preview-bad"));
+    gridCells.forEach(c =>
+        c.classList.remove("preview-ok", "preview-bad")
+    );
 }
 
-
-// Afficher la preview
+/* -------- Preview bateau -------- */
 function previewBoat(r, c) {
     clearPreview();
-
     if (!selectedBoat) return;
 
     let ok = true;
@@ -148,12 +153,15 @@ function previewBoat(r, c) {
         let rr = orientation === "vertical" ? r + i : r;
         let cc = orientation === "horizontal" ? c + i : c;
 
-        if (rr >= 10 || cc >= 10) { ok = false; continue; }
+        if (rr >= 10 || cc >= 10) {
+            ok = false;
+            continue;
+        }
 
         let index = rr * 10 + cc;
         let cell = gridCells[index];
 
-        if (cell.classList.contains("boat")) ok = false;
+        if (!cell || cell.classList.contains("boat")) ok = false;
 
         targets.push(cell);
     }
@@ -162,13 +170,8 @@ function previewBoat(r, c) {
         cell.classList.add(ok ? "preview-ok" : "preview-bad")
     );
 }
-function setOrientation(o) {
-    orientation = o;
-    document.getElementById("btn-h").classList.toggle("orientation-selected", o === "horizontal");
-    document.getElementById("btn-v").classList.toggle("orientation-selected", o === "vertical");
-}
-
 </script>
+
 </head>
 
 <body>
@@ -185,7 +188,7 @@ while ($row = $q->fetchColumn()) {
 
 <h2>Bateaux à placer</h2>
 
-<div style="margin-bottom:20px;">
+<div class="boats-list">
 <?php foreach ($boats as $b): 
     $isPlaced = in_array($b["id"], $placed);
 ?>
@@ -210,45 +213,53 @@ while ($row = $q->fetchColumn()) {
     ↕ Vertical
 </button>
 
+<button id="soundToggle" class="sound-btn" onclick="toggleSound()">
+    🔊 Son ON
+</button>
+
+
 
 <h2>Cliquez sur la grille pour placer</h2>
 
-<div class="grid">
+<div class="grid-container">
+    <div class="grid">
 
-    <!-- Ligne des numéros 0 à 9 -->
-    <div class="row">
-        <div style="width:32px;"></div>
-        <?php for ($c=0; $c<10; $c++): ?>
-            <div style="width:32px; text-align:center;"><?= $c ?></div>
-        <?php endfor; ?>
-    </div>
-
-    <!-- Grille + lettres A–J -->
-    <?php 
-    $letters = range('A','J');
-    for ($r=0; $r<10; $r++): ?>
+        <!-- Ligne des numéros 0 à 9 -->
         <div class="row">
-            <div style="width:32px; text-align:center;"><?= $letters[$r] ?></div>
-
-            <?php for ($c=0; $c<10; $c++): 
-                $cell = $sql->db->query("SELECT bateau_id FROM $table WHERE row_idx=$r AND col_idx=$c")->fetchColumn();
-                $class = $cell > 0 ? "boat" : "";
-            ?>
-                <div class="cell <?= $class ?>"
-                    onmouseover="previewBoat(<?= $r ?>, <?= $c ?>)"
-                    onmouseout="clearPreview()"
-                    onclick="placeBoat(<?= $r ?>, <?= $c ?>)">
-                </div>
+            <div class="header-cell"></div>
+            <?php for ($c=0; $c<10; $c++): ?>
+                <div class="header-cell"><?= $c ?></div>
             <?php endfor; ?>
         </div>
-    <?php endfor; ?>
+
+        <!-- Grille + lettres A–J -->
+        <?php 
+        $letters = range('A','J');
+        for ($r=0; $r<10; $r++): ?>
+            <div class="row">
+                <div class="header-cell"><?= $letters[$r] ?></div>
+
+                <?php for ($c=0; $c<10; $c++): 
+                    $cell = $sql->db->query("SELECT bateau_id FROM $table WHERE row_idx=$r AND col_idx=$c")->fetchColumn();
+                    $class = $cell > 0 ? "boat" : "";
+                ?>
+                    <div class="cell <?= $class ?>"
+                        onmouseover="previewBoat(<?= $r ?>, <?= $c ?>)"
+                        onmouseout="clearPreview()"
+                        onclick="placeBoat(<?= $r ?>, <?= $c ?>)">
+                    </div>
+                <?php endfor; ?>
+            </div>
+        <?php endfor; ?>
+    </div>
 </div>
 
 <?php if ($ready): ?>
     <form method="POST">
-        <button type="submit" style="margin-top:20px; padding:12px; background:#3498db; color:white;" name="ready">✔ J’ai fini de placer mes bateaux</button>
+        <button type="submit" class="btn-ready" name="ready">✔ J’ai fini de placer mes bateaux</button>
     </form>
 <?php endif; ?>
+<div id="toast"></div>
 
 </body>
 </html>

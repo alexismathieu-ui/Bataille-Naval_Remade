@@ -24,36 +24,11 @@ if (isset($_POST["joueur2"]) && $etat["j2"] === null) {
 <head>
     <meta charset="UTF-8">
     <title>Battle Ships Crews - Choix des joueurs</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background:#0b1b30;
-            color:#ffffff;
-            text-align:center;
-        }
-        h1 { margin-top:40px; }
-        .status {
-            margin:20px auto;
-            padding:10px 20px;
-            background:#12233f;
-            border-radius:8px;
-            width:300px;
-        }
-        button {
-            padding:10px 20px;
-            margin:10px;
-            border:none;
-            border-radius:6px;
-            cursor:pointer;
-            font-size:16px;
-        }
-        button[disabled] {
-            opacity:0.5;
-            cursor:not-allowed;
-        }
-        .btn-j1 { background:#3498db; color:#fff; }
-        .btn-j2 { background:#e67e22; color:#fff; }
-    </style>
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/grid.css">
+    <link rel="stylesheet" href="/css/buttons.css">
+    <link rel="stylesheet" href="/css/victory.css">
+    <link rel="stylesheet" href="/css/placement.css">
 </head>
 <body>
     <h1>🚢 Battle Ships Crews</h1>
