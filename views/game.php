@@ -8,12 +8,15 @@ if (!isset($_SESSION["role"])) {
 
 $sql = new SqlConnect();
 
+// Déterminer l'ordre des tables selon le rôle
 $currentRole = $_SESSION["role"];
 $myTable     = $currentRole === 'joueur1' ? 'joueur1' : 'joueur2';
 $enemyTable  = $currentRole === 'joueur1' ? 'joueur2' : 'joueur1';
 
-$letters = range('A', 'L');
-$totalRows = 12;
+// Lettres et dimensions de la grille
+
+$letters = range('A', 'J');
+$totalRows = 10;
 $totalCols = 10;
 
 $etatFile = __DIR__ . '/../etat_joueurs.json';
@@ -78,6 +81,7 @@ $enemyGrid = loadGrid($sql->db, $enemyTable);
 $shipNames = [
     2 => 'Torpilleur (2 cases)',
     3 => 'Sous-marin (3 cases)',
+    8 => 'Sous-marin (3 cases)',
     4 => 'Croiseur (4 cases)',
     5 => 'Porte-avions (5 cases)',
 ];
@@ -233,7 +237,7 @@ if ($winnerDeclared !== null):
         <div class="victory-title">🎉 VICTOIRE ! 🎉</div>
         <div class="victory-sub">Tu as remporté la partie !</div>
         <script>
-        confetti({ particleCount: 200, spread: 100, origin:{y:0.6} });
+        confetti({ particleCount: 400, spread: 100, origin:{y:0.6} });
         </script>
     <?php else: ?>
         <div class="victory-title defeat">💀 DÉFAITE 💀</div>
@@ -251,7 +255,6 @@ if ($winnerDeclared !== null):
 </div>
 
 <?php
-// ❌ On arrête toute la page ici → impossible de jouer après.
 exit;
 endif;
 ?>

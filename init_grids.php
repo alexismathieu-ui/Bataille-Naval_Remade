@@ -1,17 +1,10 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-
 require __DIR__ . '/scripts/sql-connect.php';
 
 $sql = new SqlConnect();
 
-// matrice 12 x 10 (lignes A à L, colonnes 0 à 9)
+// matrice 10 x 10
 $grid = [
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -28,7 +21,7 @@ $grid = [
 $sql->db->exec("TRUNCATE TABLE joueur1");
 $sql->db->exec("TRUNCATE TABLE joueur2");
 
-// Prépare l'INSERT pour joueur1
+// Prépare l'insertition pour joueur1
 $insert = $sql->db->prepare(
     "INSERT INTO joueur1 (row_idx, col_idx, bateau_id, checked) 
      VALUES (:row_idx, :col_idx, :bateau_id, 0)"
@@ -49,5 +42,3 @@ $sql->db->exec("
     INSERT INTO joueur2 (row_idx, col_idx, bateau_id, checked)
     SELECT row_idx, col_idx, bateau_id, 0 FROM joueur1
 ");
-
-echo "Grilles initialisées pour Joueur 1 et Joueur 2.";

@@ -85,6 +85,7 @@ body { background:#0b1b30; color:white; font-family:Arial; text-align:center; }
 </style>
 
 <script>
+// Gestion du placement des bateaux
 let selectedBoat = null;
 let selectedSize = 0;
 let orientation = "horizontal";
@@ -94,6 +95,7 @@ function selectBoat(id, size) {
     selectedSize = size;
     alert("Bateau choisi : " + id);
 }
+
 
 function setOrientation(o) {
     orientation = o;
@@ -117,7 +119,7 @@ function placeBoat(r, c) {
     .then(txt => { alert(txt); location.reload(); });
 }
 
-// STOCKAGE DOM DES CELLULES
+// Gestion de la grille
 let gridCells = [];
 
 window.onload = () => {
@@ -146,7 +148,7 @@ function previewBoat(r, c) {
         let rr = orientation === "vertical" ? r + i : r;
         let cc = orientation === "horizontal" ? c + i : c;
 
-        if (rr >= 12 || cc >= 10) { ok = false; continue; }
+        if (rr >= 10 || cc >= 10) { ok = false; continue; }
 
         let index = rr * 10 + cc;
         let cell = gridCells[index];
@@ -221,10 +223,10 @@ while ($row = $q->fetchColumn()) {
         <?php endfor; ?>
     </div>
 
-    <!-- Grille + lettres A–L -->
+    <!-- Grille + lettres A–J -->
     <?php 
-    $letters = range('A','L');
-    for ($r=0; $r<12; $r++): ?>
+    $letters = range('A','J');
+    for ($r=0; $r<10; $r++): ?>
         <div class="row">
             <div style="width:32px; text-align:center;"><?= $letters[$r] ?></div>
 

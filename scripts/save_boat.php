@@ -31,7 +31,7 @@ if ($orientation === "horizontal" && $col + $size > 10) {
     echo "Erreur : bateau dépasse la grille horizontalement.";
     exit;
 }
-if ($orientation === "vertical" && $row + $size > 12) {
+if ($orientation === "vertical" && $row + $size > 10) {
     echo "Erreur : bateau dépasse la grille verticalement.";
     exit;
 }

@@ -1,5 +1,6 @@
 <?php
 
+// Classe pour gérer la connexion SQL
 class SqlConnect {
     public PDO $db;
 
@@ -11,6 +12,7 @@ class SqlConnect {
 
     public function __construct()
     {
+        // DSN (Data Source Name)
         $dsn = "mysql:host={$this->host};port={$this->port};dbname={$this->dbname};charset=utf8mb4";
 
         try {
@@ -22,7 +24,7 @@ class SqlConnect {
         }
     }
 
-    // Helper optionnel (pas obligatoire)
+    // Helper optionnel pour formater les données d'un tableau associatif en paramètres nommés
     public function transformDataInDot(array $data): array
     {
         $dataFormated = [];

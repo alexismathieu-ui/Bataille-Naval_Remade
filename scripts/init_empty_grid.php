@@ -25,4 +25,3 @@ foreach (["joueur1", "joueur2"] as $table) {
     }
 }
 
-echo "🎉 Grilles vides initialisées pour joueur1 et joueur2";

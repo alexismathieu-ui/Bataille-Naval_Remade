@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// 1) Reset JSON
+// Reset JSON
 $etatFile = __DIR__ . '/../etat_joueurs.json';
 
 file_put_contents($etatFile, json_encode([
@@ -13,13 +13,13 @@ file_put_contents($etatFile, json_encode([
     "winner" => null
 ], JSON_PRETTY_PRINT));
 
-// 2) Reset session
+// Reset session
 $_SESSION = [];
 session_unset();
 session_destroy();
 
-// 3) Reset SQL : réinitialiser les grilles de jeu
+// Reset SQL : réinitialiser les grilles de jeu
 require __DIR__ . '/../init_grids.php';
-// 4) Redirection vers la page d'accueil
+// Redirection vers la page d'accueil
 header("Location: ../index.php");
 exit;
