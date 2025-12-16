@@ -115,8 +115,7 @@ Battle-Ships-Crews/
 
 3. Import the database
 
-   * Open phpMyAdmin or MySQL
-   * Import the `database.sql` file
+*WIP FOR THE SET UP OF THE DATABASE
 
 4. Configure the database connection
 
