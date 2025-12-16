@@ -48,19 +48,36 @@ The project was initially designed to be developed in pairs, but it was ultimate
 
 ```text
 Battle-Ships-Crews/
-├── assets/
-│   ├── css/
-│   ├── js/
-│   └── sounds/
-├── game/
-│   ├── placement.php
-│   ├── tir.php
-│   ├── etat.php
-│   └── reset.php
+├── css /
+│   ├── base.css
+│   ├── buttons.css
+│   ├── grid.css
+│   ├── placement.css
+│   └── victory.css
+│
+├── sounds/
+│   ├── error.mp3
+│   ├── place.mp3
+│   └── select.mp3
+│
+├── views/
+│   ├── game.php
+│   ├── place-boats.php
+│   ├── wait.php
+│   └── player_selected.php
+│
 ├── scripts/
+│   ├── click_case.php
+│   ├── destroy_session.php
+│   ├── init_empty_grid.php
+│   ├── reset_total.php
+│   ├── save_boats.php
+│   ├── save_state.php
 │   └── sql-connect.php
+│
 ├── index.php
-├── database.sql
+├── etat_joueurs.json
+├── init_grids.php
 └── README.md
 ```
 
