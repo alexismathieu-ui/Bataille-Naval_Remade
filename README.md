@@ -27,8 +27,8 @@ The project was initially designed to be developed in pairs, but it was ultimate
 
 * **Front-end**:
 
-  * HTML5
-  * CSS3 (animations and responsive interface)
+  * HTML
+  * CSS (animations and responsive interface)
   * JavaScript (user interactions)
 
 * **Back-end**:
@@ -40,7 +40,7 @@ The project was initially designed to be developed in pairs, but it was ultimate
 
   * Git & GitHub
   * VS Code
-  * WSL / Linux
+  * Ubuntu (Virtual Machine)
 
 ---
 
